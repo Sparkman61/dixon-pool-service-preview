@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://dixon-pool-service-preview.pages.dev/sitemap.xml
