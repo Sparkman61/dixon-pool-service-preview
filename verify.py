@@ -41,6 +41,11 @@ docs={}
 titles=[]
 for name in PAGES:
     page=PUBLIC/name; text=page.read_text(); d=Doc(); d.feed(text); docs[name]=d
+    banners=re.findall(r'<div class="concept-banner">(.*?)</div>',text,re.S)
+    assert len(banners)==1,(name,len(banners))
+    assert "This is a free concept redesign — Dixon Pool Service's actual site is at" in re.sub(r'<[^>]+>','',banners[0]),name
+    assert re.findall(r'href="([^"]+)"',banners[0])==['https://dixonpoolsmd.com/'],name
+    assert re.search(r'<body[^>]*><div class="concept-banner">',text),name
     assert d.h1==1,(name,d.h1)
     assert d.title.strip() and d.meta.get('description'),name
     titles.append(d.title.strip())
@@ -87,5 +92,6 @@ assert 'class="hero-photo" src="assets/Dixon-Pool-Van-scaled.jpg"' in home_text
 assert 'alt="Branded Dixon Pool Service company truck"' in home_text
 css=(PUBLIC/'css'/'site.css').read_text()
 for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,color
+assert '.concept-banner{' in css
 assert '.brand img{width:220px;height:118px' in css
-print('PASS: 4 pages, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
+print('PASS: 4 pages, mandatory concept banners, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
