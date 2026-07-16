@@ -46,12 +46,18 @@ for name in PAGES:
     assert "This is a free concept redesign — Dixon Pool Service's actual site is at" in re.sub(r'<[^>]+>','',banners[0]),name
     assert re.findall(r'href="([^"]+)"',banners[0])==['https://dixonpoolsmd.com/'],name
     assert re.search(r'<body[^>]*><div class="concept-banner">',text),name
-    assert re.search(r'<body[^>]*data-presentation-tier="casual"[^>]*>',text),name
+    assert re.search(r'<html[^>]*data-presentation-tier="casual"[^>]*>',text),name
+    assert not re.search(r'<body[^>]*data-presentation-tier=',text),name
     assert d.h1==1,(name,d.h1)
     assert d.title.strip() and d.meta.get('description'),name
     titles.append(d.title.strip())
     assert 'rel="canonical"' in text and 'property="og:title"' in text and 'name="twitter:card"' in text
     assert 'static.cloudflareinsights.com' not in text and 'data-cf-beacon' not in text
+    assert not re.search(r'<style\b',text,re.I),name
+    assert not re.search(r'\sstyle=["\']',text,re.I),name
+    assert d.srcs.count('assets/js/shared.js')==1,(name,d.srcs)
+    assert text.count('class="hero-divider hero-divider--wave"')==1,name
+    assert text.count('data-sticky-header')==1,name
     assert not any(h is None or h=='' or h.lower().startswith('javascript:') for h in d.hrefs)
     assert all(img.get('alt','').strip() for img in d.images),name
     for ref in d.hrefs+d.srcs:
@@ -75,7 +81,7 @@ for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','
 for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Saturday','Sunday'):
     assert forbidden not in ''.join((PUBLIC/p).read_text() for p in PAGES),forbidden
 
-for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','favicon.ico','css/site.css']:
+for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/js/shared.js','favicon.ico','css/site.css']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
 
 logo=PUBLIC/'assets/logo.png'
@@ -96,4 +102,11 @@ for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,colo
 assert 'border-bottom:4px solid var(--secondary)' in css
 assert '.concept-banner{' in css
 assert '.brand img{width:220px;height:118px' in css
-print('PASS: 4 pages, mandatory concept banners, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
+assert '.site-header{background:#fff;border-bottom:1px solid var(--line);position:sticky' in css
+assert '.site-header.is-condensed .brand img{' in css
+assert '.hero-divider{' in css and '.reveal{opacity:1;transform:none}' in css
+assert '@media(prefers-reduced-motion:reduce)' in css
+js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
+for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>'):
+    assert marker in js,marker
+print('PASS: 4 pages, mandatory concept banners, casual UX polish, shared behavior, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
