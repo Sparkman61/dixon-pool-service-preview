@@ -69,10 +69,15 @@ for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','
 for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Saturday','Sunday'):
     assert forbidden not in ''.join((PUBLIC/p).read_text() for p in PAGES),forbidden
 
-for path in ['assets/logo.png','assets/favicon.ico','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','favicon.ico','css/site.css']:
+for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','favicon.ico','css/site.css']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
 
 ld=re.search(r'<script type="application/ld\+json">(.*?)</script>',home_text,re.S)
 assert ld
 obj=json.loads(ld.group(1)); assert obj['@type']=='LocalBusiness' and 'geo' not in obj and 'email' not in obj
+assert 'class="hero-photo" src="assets/Dixon-Pool-Van-scaled.jpg"' in home_text
+assert 'alt="Branded Dixon Pool Service company truck"' in home_text
+css=(PUBLIC/'css'/'site.css').read_text()
+for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,color
+assert '.brand img{width:220px;height:118px' in css
 print('PASS: 4 pages, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
