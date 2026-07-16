@@ -2,7 +2,7 @@
 """Ad-hoc integrity checks for the generated Dixon preview."""
 from html.parser import HTMLParser
 from pathlib import Path
-import json,re
+import hashlib,json,re,struct
 
 ROOT=Path(__file__).resolve().parent
 PUBLIC=ROOT/'public'
@@ -71,6 +71,14 @@ for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Satu
 
 for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','favicon.ico','css/site.css']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
+
+logo=PUBLIC/'assets/logo.png'
+with logo.open('rb') as f:
+    assert f.read(8)==b'\x89PNG\r\n\x1a\n'
+    length=struct.unpack('>I',f.read(4))[0]; assert f.read(4)==b'IHDR' and length==13
+    width,height=struct.unpack('>II',f.read(8))
+assert (width,height)==(1831,1112),(width,height)
+assert hashlib.sha256(logo.read_bytes()).hexdigest()=='023bbdabc7b8bce4139236cda5c8b4b223deded3a432b93e14009758f18cedd4'
 
 ld=re.search(r'<script type="application/ld\+json">(.*?)</script>',home_text,re.S)
 assert ld
