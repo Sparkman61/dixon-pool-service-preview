@@ -81,7 +81,7 @@ for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','
 for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Saturday','Sunday'):
     assert forbidden not in ''.join((PUBLIC/p).read_text() for p in PAGES),forbidden
 
-for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/js/shared.js','favicon.ico','css/site.css']:
+for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/js/shared.js','favicon.ico','css/site.css','_worker.js']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
 
 logo=PUBLIC/'assets/logo.png'
@@ -109,4 +109,23 @@ assert '@media(prefers-reduced-motion:reduce)' in css
 js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
 for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>'):
     assert marker in js,marker
-print('PASS: 4 pages, mandatory concept banners, casual UX polish, shared behavior, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
+
+contact=(PUBLIC/'contact.html').read_text()
+assert '<h1>Request Pool Service</h1>' in contact
+assert '<h2>Request Service</h2>' in contact
+form=re.search(r'<form class="inquiry-form" action="/api/request-service" method="post">(.*?)</form>',contact,re.S)
+assert form
+form_html=form.group(1)
+for field,label in [('name','Name'),('phone','Phone Number'),('email','Email Address'),('service','Service(s) Needed'),('message','Message')]:
+    assert f'name="{field}"' in form_html,(field,'missing field')
+    assert label in form_html,(field,'missing label')
+for required in ('name','phone','email','message'):
+    assert re.search(rf'name="{required}"[^>]*required',form_html),(required,'not required')
+assert 'name="company_website"' in form_html and 'type="submit">Send Service Request</button>' in form_html
+assert 'class="cf-turnstile"' in form_html and 'data-sitekey=' in form_html
+assert 'https://challenges.cloudflare.com/turnstile/v0/api.js' in contact
+worker=(PUBLIC/'_worker.js').read_text()
+for marker in ('url.pathname === "/api/request-service"','request.method !== "POST"','status:405','responsePage(422','ORIGINAL_CONTACT','et_pb_contact_name_0','_wpnonce-et-pb-contact-form-submitted-0','et_pb_contact_captcha_0','TURNSTILE_SECRET','turnstile/v0/siteverify','request.body.getReader()','total > maxBytes','origin !== new URL(request.url).origin','plain === "Thanks for contacting us"','formStillPresent','env.ASSETS.fetch(request)'):
+    assert marker in worker,marker
+assert 'chris@leadfilament.com' not in worker and 'preventDefault' not in contact
+print('PASS: 4 pages, mandatory concept banners, functional Request Service bridge, casual UX polish, shared behavior, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')

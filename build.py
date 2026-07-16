@@ -14,6 +14,7 @@ PIPELINE_ROOT = Path('/home/chris/pitch-pipeline')
 PUBLIC = ROOT / 'public'
 BASE_URL = 'https://dixon-pool-service-preview.pages.dev'
 PRESENTATION_TIER = 'casual'  # local consumer pool-service vertical
+TURNSTILE_SITEKEY = (ROOT / 'turnstile-sitekey.txt').read_text().strip()
 
 DATA = json.loads(DATA_PATH.read_text())
 assert DATA['status'] == 'ok'
@@ -60,11 +61,11 @@ CSS = r'''
 .container{width:min(1120px,calc(100% - 2rem));margin:auto}.topbar{background:var(--primary);color:#052d3d;font-size:.9rem}.topbar .container{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0}.topbar a{font-weight:800;text-decoration:none}.site-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:90;box-shadow:0 4px 18px rgba(16,86,130,.12);transition:box-shadow .22s ease}.header-row{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding:.65rem 0;transition:padding .22s ease}.brand{display:flex;align-items:center;gap:1rem;text-decoration:none}.brand img{width:220px;height:118px;object-fit:contain;transition:width .22s ease,height .22s ease}.brand-copy{display:none}.nav{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}.nav a{padding:.65rem .9rem;text-decoration:none;font-weight:800;color:var(--navy);border-radius:999px;transition:padding .22s ease,background .15s ease}.nav a:hover,.nav a:focus,.nav a[aria-current=page]{background:var(--pale);color:#006b91}.nav .call{background:var(--primary);color:#072f40}.site-header.is-condensed .header-row{padding:.2rem 0}.site-header.is-condensed .brand img{width:175px;height:94px}.site-header.is-condensed .nav a{padding:.45rem .72rem}main [id]{scroll-margin-top:8rem}
 .hero{position:relative;overflow:hidden;background:var(--primary);color:#fff;padding:7rem 0;min-height:590px;display:flex;align-items:center}.hero-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0}.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,175,231,.91) 0%,rgba(0,175,231,.78) 46%,rgba(0,175,231,.35) 100%);z-index:1}.hero-grid{position:relative;z-index:2}.hero-copy{max-width:700px}.eyebrow{margin:0 0 .8rem;color:#fff;text-transform:uppercase;letter-spacing:.13em;font-weight:900;font-size:.8rem}.hero h1{font-size:clamp(2.4rem,5vw,4.5rem);line-height:1.03;margin:.2rem 0 1.2rem;text-shadow:0 2px 18px rgba(16,86,130,.35)}.hero p{font-size:1.15rem;color:#fff;max-width:650px}.rating-badge{display:inline-block;margin-top:1.25rem;background:#fff;color:var(--navy);padding:.75rem 1rem;border-radius:14px;box-shadow:var(--shadow);font-weight:900}.stars{color:#f4b400}.actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.6rem}.btn{display:inline-block;border-radius:999px;padding:.8rem 1.15rem;text-decoration:none;font-weight:900;border:2px solid transparent}.btn-primary{background:#fff;color:var(--navy)}.btn-light{border-color:#fff;color:#fff}.btn-navy{background:var(--navy);color:#fff}
 .section{padding:5rem 0}.section-alt{background:#f5fbfd}.section-head{max-width:720px;margin-bottom:2.2rem}.section-head h2,.page-hero h1{color:var(--navy);font-size:clamp(2rem,4vw,3rem);line-height:1.12;margin:0 0 .7rem}.section-head p{color:var(--muted);font-size:1.05rem}.grid{display:grid;gap:1.2rem}.service-grid{grid-template-columns:repeat(3,1fr)}.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.5rem;box-shadow:0 8px 24px rgba(16,86,130,.07)}.card h3{color:var(--navy);margin:.1rem 0 .5rem}.service-card{border-top:5px solid var(--primary);min-height:125px;display:flex;align-items:center}.proof-grid{grid-template-columns:repeat(3,1fr)}.proof{text-align:center}.proof strong{display:block;font-size:2rem;color:var(--navy)}.review-grid{grid-template-columns:repeat(3,1fr)}blockquote{margin:0;font-style:italic}.review footer{margin-top:1rem;color:var(--navy);font-weight:900}.contact-band{background:var(--primary);color:#052d3d}.contact-row{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding:2.2rem 0}.contact-row h2{margin:0}.contact-row p{margin:.25rem 0 0}.contact-row .btn{background:var(--navy);color:#fff}
-.page-hero{background:var(--pale);padding:4rem 0;border-bottom:4px solid var(--secondary)}.page-hero p{max-width:760px;color:var(--muted);font-size:1.1rem}.split{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}.split img{border-radius:var(--radius);box-shadow:var(--shadow);aspect-ratio:4/3;object-fit:cover}.fact-list{display:grid;gap:1rem}.fact{border-left:5px solid var(--primary);padding:1rem 1.2rem;background:var(--pale);border-radius:0 12px 12px 0}.fact strong{display:block;color:var(--navy)}.contact-grid{grid-template-columns:1fr 1fr}.contact-card h2{margin-top:0;color:var(--navy)}.detail-list{list-style:none;padding:0;margin:0}.detail-list li{padding:.8rem 0;border-bottom:1px solid var(--line)}.detail-list a{color:var(--navy);font-weight:800}.socials{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.2rem}
+.page-hero{background:var(--pale);padding:4rem 0;border-bottom:4px solid var(--secondary)}.page-hero p{max-width:760px;color:var(--muted);font-size:1.1rem}.split{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}.split img{border-radius:var(--radius);box-shadow:var(--shadow);aspect-ratio:4/3;object-fit:cover}.fact-list{display:grid;gap:1rem}.fact{border-left:5px solid var(--primary);padding:1rem 1.2rem;background:var(--pale);border-radius:0 12px 12px 0}.fact strong{display:block;color:var(--navy)}.contact-grid{grid-template-columns:1fr 1fr}.contact-card h2{margin-top:0;color:var(--navy)}.detail-list{list-style:none;padding:0;margin:0}.detail-list li{padding:.8rem 0;border-bottom:1px solid var(--line)}.detail-list a{color:var(--navy);font-weight:800}.socials{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.2rem}.inquiry-form{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.form-field{display:grid;gap:.35rem}.form-field-full{grid-column:1/-1}.form-field label{font-weight:800;color:var(--navy)}.form-field input,.form-field textarea{width:100%;padding:.8rem;border:1px solid #8cb8ca;border-radius:10px;font:inherit;color:var(--ink);background:#fff}.form-field textarea{min-height:150px;resize:vertical}.form-field input:focus,.form-field textarea:focus{outline:3px solid rgba(0,175,231,.25);border-color:var(--primary)}.form-note{grid-column:1/-1;color:var(--muted);font-size:.92rem}.honeypot{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.inquiry-form .btn{cursor:pointer;border:0;justify-self:start}
 .hero-divider{height:40px;margin-top:-40px;position:relative;z-index:3;overflow:hidden;line-height:0;pointer-events:none}.hero-divider svg{display:block;width:100%;height:100%}.hero-divider path{fill:#fff}.reveal{opacity:1;transform:none}.reveal.reveal-pending{opacity:0;transform:translateY(14px);transition:opacity .42s ease,transform .42s ease}.reveal.is-visible{opacity:1;transform:none}
 .site-footer{background:#071f2b;color:#c8d8df;padding:3rem 0 1.2rem}.footer-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:2rem}.site-footer h3{color:#fff}.site-footer a{display:block;color:#c8d8df;margin:.35rem 0}.footer-bottom{border-top:1px solid #29424e;margin-top:2rem;padding-top:1rem;text-align:center;font-size:.9rem}
 @media(max-width:800px){.header-row{align-items:flex-start;flex-direction:column}.nav{width:100%}.split,.contact-grid{grid-template-columns:1fr}.hero{padding:5rem 0;min-height:540px}.hero::after{background:rgba(0,175,231,.78)}.service-grid,.proof-grid,.review-grid{grid-template-columns:1fr 1fr}.contact-row{align-items:flex-start;flex-direction:column}.footer-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.topbar .container{flex-direction:column;gap:.1rem}.brand img{width:175px;height:94px}.site-header.is-condensed .header-row{gap:.25rem}.site-header.is-condensed .brand img{width:135px;height:72px}.nav a{padding:.55rem .65rem;font-size:.9rem}.site-header.is-condensed .nav a{padding:.4rem .5rem;font-size:.84rem}main [id]{scroll-margin-top:14rem}.hero h1{font-size:2.55rem}.service-grid,.proof-grid,.review-grid,.footer-grid{grid-template-columns:1fr}.section{padding:3.8rem 0}.contact-row{padding:1.8rem 0}}
+@media(max-width:520px){.topbar .container{flex-direction:column;gap:.1rem}.brand img{width:175px;height:94px}.site-header.is-condensed .header-row{gap:.25rem}.site-header.is-condensed .brand img{width:135px;height:72px}.nav a{padding:.55rem .65rem;font-size:.9rem}.site-header.is-condensed .nav a{padding:.4rem .5rem;font-size:.84rem}main [id]{scroll-margin-top:14rem}.hero h1{font-size:2.55rem}.service-grid,.proof-grid,.review-grid,.footer-grid,.inquiry-form{grid-template-columns:1fr}.form-field-full{grid-column:auto}.section{padding:3.8rem 0}.contact-row{padding:1.8rem 0}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.header-row,.brand img,.nav a,.reveal.reveal-pending{transition:none}.reveal.reveal-pending{opacity:1;transform:none}}
 '''
 
@@ -107,6 +108,130 @@ JS = r'''(() => {
   window.addEventListener('scroll', revealPassed, { passive: true });
   window.addEventListener('hashchange', revealPassed);
 })();
+'''
+
+WORKER_JS = r'''const ORIGINAL_CONTACT = "https://dixonpoolsmd.com/contact/";
+const MAX_BODY_BYTES = 32 * 1024;
+
+function responsePage(status, title, message) {
+  const safe = (value) => String(value).replace(/[&<>"']/g, (ch) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  return new Response(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${safe(title)} | Dixon Pool Service</title><body><div>📋 This is a free concept redesign — Dixon Pool Service's actual site is at <a href="https://dixonpoolsmd.com/">dixonpoolsmd.com</a></div><main><h1>${safe(title)}</h1><p>${safe(message)}</p><p><a href="/contact">Return to Request Service</a></p></main></body></html>`, {status, headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff","referrer-policy":"no-referrer"}});
+}
+
+function extract(source, pattern, label) {
+  const match = source.match(pattern);
+  if (!match) throw new Error(`Original contact form is missing ${label}`);
+  return match[1];
+}
+
+function field(form, name, max) {
+  const value = form.get(name);
+  if (value === null) return "";
+  const clean = value.trim();
+  if (clean.length > max) throw new RangeError(`${name} is too long`);
+  return clean;
+}
+
+async function readBoundedBody(request, maxBytes) {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new RangeError("Request body is too large");
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder("utf-8", {fatal:true}).decode(body);
+}
+
+async function forwardToOriginal(request, env) {
+ try {
+  const origin = request.headers.get("origin");
+  if (origin !== new URL(request.url).origin) return responsePage(403, "Submission blocked", "Please use the Request Service form on this site.");
+  const type = request.headers.get("content-type") || "";
+  if (!type.includes("application/x-www-form-urlencoded")) {
+    return responsePage(415, "Unsupported submission", "Please use the Request Service form.");
+  }
+  const raw = await readBoundedBody(request, MAX_BODY_BYTES);
+  const form = new URLSearchParams(raw);
+  if (field(form, "company_website", 240)) return responsePage(200, "Request received", "Thank you.");
+  const values = {
+    name: field(form, "name", 120),
+    phone: field(form, "phone", 40),
+    email: field(form, "email", 254),
+    service: field(form, "service", 240),
+    message: field(form, "message", 4000),
+  };
+  if (!values.name || !values.phone || !values.email || !values.message) {
+    return responsePage(422, "Please complete the form", "Name, phone number, email address, and message are required.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) return responsePage(422, "Check your email", "Enter a valid email address.");
+  const turnstile = field(form, "cf-turnstile-response", 4096);
+  if (!turnstile || !env.TURNSTILE_SECRET) return responsePage(422, "Verification required", "Complete the anti-spam check and try again.");
+  const verifyBody = new URLSearchParams({secret:env.TURNSTILE_SECRET,response:turnstile,remoteip:request.headers.get("CF-Connecting-IP") || ""});
+  const verify = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:verifyBody.toString()});
+  const verdict = await verify.json();
+  if (!verify.ok || verdict.success !== true) return responsePage(422, "Verification failed", "Complete the anti-spam check and try again.");
+
+  const page = await fetch(ORIGINAL_CONTACT, {headers:{"user-agent":"Website Rescue contact-form bridge/1.0","accept":"text/html"}});
+  if (!page.ok) return responsePage(502, "Service temporarily unavailable", "Please call Dixon Pool Service at (301) 607-1011.");
+  const source = await page.text();
+  let nonce, first, second;
+  try {
+    nonce = extract(source, /name="_wpnonce-et-pb-contact-form-submitted-0" value="([^"]+)"/, "security token");
+    const captchaTag = extract(source, /(<input[^>]*name="et_pb_contact_captcha_0"[^>]*>)/, "CAPTCHA field");
+    first = Number(extract(captchaTag, /data-first_digit="(\d+)"/, "first CAPTCHA digit"));
+    second = Number(extract(captchaTag, /data-second_digit="(\d+)"/, "second CAPTCHA digit"));
+  } catch (_) {
+    return responsePage(502, "Service temporarily unavailable", "Please call Dixon Pool Service at (301) 607-1011.");
+  }
+  const upstream = new URLSearchParams({
+    et_pb_contact_name_0: values.name,
+    et_pb_contact_phone_number_0: values.phone,
+    et_pb_contact_email_0: values.email,
+    et_pb_contact_service_0: values.service,
+    et_pb_contact_message_0: values.message,
+    et_pb_contact_captcha_0: String(first + second),
+    et_pb_contactform_submit_0: "et_contact_proccess",
+    et_builder_submit_button: "Submit",
+    "_wpnonce-et-pb-contact-form-submitted-0": nonce,
+    _wp_http_referer: "/contact/",
+  });
+  const sent = await fetch(ORIGINAL_CONTACT, {method:"POST", headers:{"content-type":"application/x-www-form-urlencoded","user-agent":"Website Rescue contact-form bridge/1.0","referer":ORIGINAL_CONTACT}, body:upstream.toString(), redirect:"follow"});
+  if (!sent.ok) return responsePage(502, "Request not sent", "Please call Dixon Pool Service at (301) 607-1011.");
+  const result = await sent.text();
+  const message = result.match(/<div class="et-pb-contact-message">([\s\S]*?)<\/div>/i);
+  const plain = message ? message[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+  const formStillPresent = /<form class="et_pb_contact_form\b/i.test(result);
+  const confirmed = plain === "Thanks for contacting us";
+  if (!confirmed || formStillPresent) return responsePage(502, "Request not confirmed", "Please call Dixon Pool Service at (301) 607-1011.");
+  return responsePage(200, "Request sent", "Dixon Pool Service's original contact system accepted your request.");
+ } catch (error) {
+  const status = error instanceof RangeError ? 413 : 502;
+  const title = status === 413 ? "Request too large" : "Service temporarily unavailable";
+  return responsePage(status, title, "Please call Dixon Pool Service at (301) 607-1011.");
+ }
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/request-service") {
+      if (request.method !== "POST") return new Response("Method Not Allowed", {status:405, headers:{allow:"POST"}});
+      return forwardToOriginal(request, env);
+    }
+    return env.ASSETS.fetch(request);
+  }
+};
 '''
 
 WAVE_DIVIDER = '''<div class="hero-divider hero-divider--wave" aria-hidden="true">
@@ -211,7 +336,7 @@ def services_page() -> str:
 
 def contact_page() -> str:
     maps='https://www.google.com/maps/search/?api=1&query='+quote_plus(ADDRESS)
-    body=f'''<main id="main-content"><section class="page-hero"><div class="container"><p class="eyebrow">Get in touch</p><h1>Contact Dixon Pool Service</h1><p>Call during listed hours or use the verified address below.</p></div></section><section class="section"><div class="container grid contact-grid"><article class="card contact-card"><h2>Contact details</h2><ul class="detail-list"><li><strong>Phone</strong><br><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></li><li><strong>Address</strong><br>{html.escape(ADDRESS)}<br><a href="{maps}">Open in Google Maps</a></li><li><strong>Hours</strong><br>Monday–Friday, 8 AM–4 PM</li></ul><div class="socials"><a class="btn btn-navy" href="{FACEBOOK}">Facebook</a><a class="btn btn-primary" href="{TIKTOK}">TikTok</a></div></article><article class="card contact-card"><h2>Services at a glance</h2><ul class="detail-list">{''.join(f'<li>{html.escape(s)}</li>' for s in SERVICES)}</ul><div class="actions"><a class="btn btn-navy" href="tel:{PHONE_HREF}">Call Dixon Pool Service</a></div></article></div></section></main>'''
+    body=f'''<main id="main-content"><section class="page-hero"><div class="container"><p class="eyebrow">Get in touch</p><h1>Request Pool Service</h1><p>Send a service request or call during listed business hours.</p></div></section><section class="section"><div class="container grid contact-grid"><article class="card contact-card"><h2>Request Service</h2><p>This form preserves the original site's service-inquiry purpose and sends requests through Dixon Pool Service's existing contact system.</p><form class="inquiry-form" action="/api/request-service" method="post"><div class="honeypot" aria-hidden="true"><label for="company-website">Company website</label><input id="company-website" name="company_website" type="text" tabindex="-1" autocomplete="off"></div><div class="form-field"><label for="request-name">Name</label><input id="request-name" name="name" type="text" autocomplete="name" required maxlength="120"></div><div class="form-field"><label for="request-phone">Phone Number</label><input id="request-phone" name="phone" type="tel" autocomplete="tel" required maxlength="40"></div><div class="form-field form-field-full"><label for="request-email">Email Address</label><input id="request-email" name="email" type="email" autocomplete="email" required maxlength="254"></div><div class="form-field form-field-full"><label for="request-service">Service(s) Needed</label><input id="request-service" name="service" type="text" autocomplete="off" maxlength="240"></div><div class="form-field form-field-full"><label for="request-message">Message</label><textarea id="request-message" name="message" required maxlength="4000"></textarea></div><div class="form-field form-field-full"><div class="cf-turnstile" data-sitekey="{html.escape(TURNSTILE_SITEKEY, quote=True)}"></div></div><p class="form-note">Cloudflare verifies the anti-spam check, then the demo forwards your request to Dixon Pool Service's original contact system. The demo does not intentionally store inquiry details.</p><button class="btn btn-navy" type="submit">Send Service Request</button></form></article><article class="card contact-card"><h2>Contact details</h2><ul class="detail-list"><li><strong>Phone</strong><br><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></li><li><strong>Address</strong><br>{html.escape(ADDRESS)}<br><a href="{maps}">Open in Google Maps</a></li><li><strong>Hours</strong><br>Monday–Friday, 8 AM–4 PM</li></ul><div class="socials"><a class="btn btn-navy" href="{FACEBOOK}">Facebook</a><a class="btn btn-primary" href="{TIKTOK}">TikTok</a></div></article></div></section><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></main>'''
     return shell('contact.html',body)
 
 
@@ -227,6 +352,7 @@ def build() -> None:
     shutil.copy2(PIPELINE_ROOT/DATA['favicon_path'],PUBLIC/'favicon.ico')
     (PUBLIC/'css'/'site.css').write_text(CSS)
     (PUBLIC/'assets'/'js'/'shared.js').write_text(JS)
+    (PUBLIC/'_worker.js').write_text(WORKER_JS)
     outputs={'index.html':home_page(),'about.html':about_page(),'services.html':services_page(),'contact.html':contact_page()}
     for name,text in outputs.items(): (PUBLIC/name).write_text(text)
     urls='\n'.join(f'  <url><loc>{canonical(name)}</loc></url>' for name in PAGES)
