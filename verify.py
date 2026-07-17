@@ -6,16 +6,18 @@ import hashlib,json,re,struct
 
 ROOT=Path(__file__).resolve().parent
 PUBLIC=ROOT/'public'
-PAGES=['index.html','about.html','services.html','contact.html']
+PAGES=['index.html','about.html','services.html','faq.html','contact.html','privacy.html','terms.html']
 
 class Doc(HTMLParser):
     def __init__(self):
-        super().__init__(); self.ids=set(); self.hrefs=[]; self.srcs=[]; self.h1=0; self.title=''; self.in_title=False; self.meta={}; self.images=[]
+        super().__init__(); self.ids=set(); self.hrefs=[]; self.srcs=[]; self.stylesheets=[]; self.scripts=[]; self.h1=0; self.title=''; self.in_title=False; self.meta={}; self.images=[]
     def handle_starttag(self,tag,attrs):
         a=dict(attrs)
         if a.get('id'): self.ids.add(a['id'])
         if tag=='a': self.hrefs.append(a.get('href'))
+        if tag=='link' and a.get('rel')=='stylesheet': self.stylesheets.append(a.get('href'))
         if tag in ('img','script') and a.get('src'): self.srcs.append(a['src'])
+        if tag=='script': self.scripts.append(a)
         if tag=='img': self.images.append(a)
         if tag=='h1': self.h1+=1
         if tag=='title': self.in_title=True
@@ -55,7 +57,9 @@ for name in PAGES:
     assert 'static.cloudflareinsights.com' not in text and 'data-cf-beacon' not in text
     assert not re.search(r'<style\b',text,re.I),name
     assert not re.search(r'\sstyle=["\']',text,re.I),name
+    assert d.stylesheets==['css/site.css'],(name,d.stylesheets)
     assert d.srcs.count('assets/js/shared.js')==1,(name,d.srcs)
+    assert all(script.get('src') or script.get('type')=='application/ld+json' for script in d.scripts),name
     assert text.count('class="hero-divider hero-divider--wave"')==1,name
     assert text.count('data-sticky-header')==1,name
     assert not any(h is None or h=='' or h.lower().startswith('javascript:') for h in d.hrefs)
@@ -74,6 +78,9 @@ home=docs['index.html']
 for ident in ('top','services','why-dixon','reviews','contact'): assert ident in home.ids
 for href in ('#top','#services','#contact'): assert href in home.hrefs
 for name in PAGES[1:]: assert 'index.html#top' in docs[name].hrefs
+for name in PAGES:
+    for href in ('about.html','services.html','faq.html','contact.html','privacy.html','terms.html'):
+        assert href in docs[name].hrefs,(name,href)
 
 home_text=(PUBLIC/'index.html').read_text()
 for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','2005'):
@@ -81,7 +88,7 @@ for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','
 for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Saturday','Sunday'):
     assert forbidden not in ''.join((PUBLIC/p).read_text() for p in PAGES),forbidden
 
-for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/js/shared.js','favicon.ico','css/site.css','_worker.js']:
+for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/pool-before.jpg','assets/pool-after.jpg','assets/js/shared.js','favicon.ico','css/site.css','_worker.js']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
 
 logo=PUBLIC/'assets/logo.png'
@@ -97,6 +104,43 @@ assert ld
 obj=json.loads(ld.group(1)); assert obj['@type']=='LocalBusiness' and 'geo' not in obj and 'email' not in obj
 assert 'class="hero-photo" src="assets/Dixon-Pool-Van-scaled.jpg"' in home_text
 assert 'alt="Branded Dixon Pool Service company truck"' in home_text
+for name in PAGES[1:]:
+    page_text=(PUBLIC/name).read_text()
+    assert 'class="page-hero-photo" src="assets/Dixon-Pool-Van-scaled.jpg"' in page_text,name
+    assert 'alt="Branded Dixon Pool Service company truck"' in page_text,name
+
+services=(PUBLIC/'services.html').read_text()
+source_services=Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service-assets/source/services.html').read_text()
+for copy in (
+    'Opening an in-ground swimming pool can be a daunting task.',
+    'Pool closings are the most important service that we offer.',
+    'For those of you who just want to swim and not have to deal with the pool',
+    'Looking to adjust your pool pump, or control your pool or spa temperatures',
+    'Pool heater tune-up, repair, and troubleshooting can be a very daunting task',
+    'Need a New Safety Cover for Your Pool?',
+):
+    assert copy in source_services,copy
+    assert copy in services,copy
+assert services.count('data-comparison')==1
+assert '<input id="pool-comparison" type="range" min="0" max="100" value="50">' in services
+assert 'assets/pool-before.jpg' in services and 'assets/pool-after.jpg' in services
+for name,digest in [('pool-before.jpg','0404218c387174cb0836b67fa14a185358f65b29edae12a52d41b8316d88953b'),('pool-after.jpg','c6f0564843ac1bb29ab487132405e4080490fad2f5fbd65c946c85c20b55610e')]:
+    assert hashlib.sha256((ROOT/'source-assets'/name).read_bytes()).hexdigest()==digest,name
+    assert (PUBLIC/'assets'/name).read_bytes()==(ROOT/'source-assets'/name).read_bytes(),name
+
+about=(PUBLIC/'about.html').read_text()
+source_about=Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service-assets/source/about.html').read_text()
+for copy in ('Dixon Pool Service was established in 2005 by Thomas Dixon, Sr.','Seeing that customers were not getting their customer service needs properly met','The company grew quickly and now includes his son-in-law and grandson','Dixon Pool Service does not sell just one brand of pool equipment'):
+    assert copy in source_about,copy
+    assert copy in about,copy
+
+faq=(PUBLIC/'faq.html').read_text()
+assert faq.count('<details>')==11 and faq.count('<summary>')==11
+for question in ('Do you clean pools?','Do you replace pool equipment?','Do you re-plaster pools?','Do you give free estimates?','Do you deliver pool water?','Do you work on above ground pools?','Do you have a store?','Do you install safety covers?','Do you offer weekly pool service?','Do you take credit cards?','When should I open my pool?'):
+    assert question in source_services,question
+    assert question in faq,question
+assert '<h1>Privacy Policy</h1>' in (PUBLIC/'privacy.html').read_text()
+assert '<h1>Terms of Use</h1>' in (PUBLIC/'terms.html').read_text()
 css=(PUBLIC/'css'/'site.css').read_text()
 for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,color
 assert 'border-bottom:4px solid var(--secondary)' in css
@@ -107,7 +151,7 @@ assert '.site-header.is-condensed .brand img{' in css
 assert '.hero-divider{' in css and '.reveal{opacity:1;transform:none}' in css
 assert '@media(prefers-reduced-motion:reduce)' in css
 js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
-for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>'):
+for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison]')",'--comparison-position'):
     assert marker in js,marker
 
 contact=(PUBLIC/'contact.html').read_text()
@@ -128,4 +172,4 @@ worker=(PUBLIC/'_worker.js').read_text()
 for marker in ('url.pathname === "/api/request-service"','request.method !== "POST"','status:405','responsePage(422','ORIGINAL_CONTACT','et_pb_contact_name_0','_wpnonce-et-pb-contact-form-submitted-0','et_pb_contact_captcha_0','TURNSTILE_SECRET','turnstile/v0/siteverify','request.body.getReader()','total > maxBytes','origin !== new URL(request.url).origin','plain === "Thanks for contacting us"','formStillPresent','env.ASSETS.fetch(request)'):
     assert marker in worker,marker
 assert 'chris@leadfilament.com' not in worker and 'preventDefault' not in contact
-print('PASS: 4 pages, mandatory concept banners, functional Request Service bridge, casual UX polish, shared behavior, links, fragments, assets, SEO, verified facts, JSON-LD, and /scan rule')
+print('PASS: 7 pages, sourced About/Services/FAQ copy, accessible before/after comparison, subpage hero media, legal pages, mandatory concept banners, hardened Request Service bridge, casual UX polish, links, assets, SEO, JSON-LD, and /scan rule')
