@@ -7,6 +7,7 @@ import hashlib,json,re,struct
 ROOT=Path(__file__).resolve().parent
 PUBLIC=ROOT/'public'
 PAGES=['index.html','about.html','services.html','faq.html','contact.html','privacy.html','terms.html']
+DATA=json.loads(Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service.json').read_text())
 
 class Doc(HTMLParser):
     def __init__(self):
@@ -57,7 +58,7 @@ for name in PAGES:
     assert 'static.cloudflareinsights.com' not in text and 'data-cf-beacon' not in text
     assert not re.search(r'<style\b',text,re.I),name
     assert not re.search(r'\sstyle=["\']',text,re.I),name
-    assert d.stylesheets==['css/site.css'],(name,d.stylesheets)
+    assert d.stylesheets==['css/site.css?v=cycle3d'],(name,d.stylesheets)
     assert d.srcs.count('assets/js/shared.js')==1,(name,d.srcs)
     assert all(script.get('src') or script.get('type')=='application/ld+json' for script in d.scripts),name
     assert text.count('class="hero-divider hero-divider--wave"')==1,name
@@ -88,7 +89,7 @@ for value in ('(301) 607-1011','9506 Hansonville Rd','4.8','17 Google reviews','
 for forbidden in ('fulfillment@alphamediausa.com','39.493658','-77.398795','Saturday','Sunday'):
     assert forbidden not in ''.join((PUBLIC/p).read_text() for p in PAGES),forbidden
 
-for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/pool-before.jpg','assets/pool-after.jpg','assets/js/shared.js','favicon.ico','css/site.css','_worker.js']:
+for path in ['assets/logo.png','assets/favicon.ico','assets/Dixon-Pool-Van-scaled.jpg','assets/image1.jpg','assets/image2.jpg','assets/image3.jpg','assets/pool-before.jpg','assets/pool-after.jpg','assets/js/shared.js','favicon.ico','css/site.css','_worker.js','.well-known/request-service-handler.js']:
     p=PUBLIC/path; assert p.is_file() and p.stat().st_size>0,p
 
 logo=PUBLIC/'assets/logo.png'
@@ -111,6 +112,10 @@ for name in PAGES[1:]:
 
 services=(PUBLIC/'services.html').read_text()
 source_services=Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service-assets/source/services.html').read_text()
+assert DATA['faq_page_authorized'] is True and len(DATA['faq_pairs']) == 11
+pair=DATA['before_after_pairs'][0]
+assert pair['id']=='services-weekly-maintenance-pair-1' and pair['approved'] is True
+assert 'dsm_before_after_image_1' in source_services
 for copy in (
     'Opening an in-ground swimming pool can be a daunting task.',
     'Pool closings are the most important service that we offer.',
@@ -124,9 +129,10 @@ for copy in (
 assert services.count('data-comparison')==1
 assert '<input id="pool-comparison" type="range" min="0" max="100" value="50">' in services
 assert 'assets/pool-before.jpg' in services and 'assets/pool-after.jpg' in services
-for name,digest in [('pool-before.jpg','0404218c387174cb0836b67fa14a185358f65b29edae12a52d41b8316d88953b'),('pool-after.jpg','c6f0564843ac1bb29ab487132405e4080490fad2f5fbd65c946c85c20b55610e')]:
-    assert hashlib.sha256((ROOT/'source-assets'/name).read_bytes()).hexdigest()==digest,name
-    assert (PUBLIC/'assets'/name).read_bytes()==(ROOT/'source-assets'/name).read_bytes(),name
+for role,name in [('before','pool-before.jpg'),('after','pool-after.jpg')]:
+    source=Path('/home/chris/pitch-pipeline')/pair[role]['local_path']
+    assert hashlib.sha256(source.read_bytes()).hexdigest()==pair[role]['sha256'],name
+    assert (PUBLIC/'assets'/name).read_bytes()==source.read_bytes(),name
 
 about=(PUBLIC/'about.html').read_text()
 source_about=Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service-assets/source/about.html').read_text()
@@ -141,6 +147,8 @@ for question in ('Do you clean pools?','Do you replace pool equipment?','Do you 
     assert question in faq,question
 assert '<h1>Privacy Policy</h1>' in (PUBLIC/'privacy.html').read_text()
 assert '<h1>Terms of Use</h1>' in (PUBLIC/'terms.html').read_text()
+for name in ('privacy.html','terms.html'):
+    assert 'class="container legal" data-content-lineage="approved-preview-policy"' in (PUBLIC/name).read_text(),name
 css=(PUBLIC/'css'/'site.css').read_text()
 for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,color
 assert 'border-bottom:4px solid var(--secondary)' in css
@@ -150,6 +158,11 @@ assert '.site-header{background:#fff;border-bottom:1px solid var(--line);positio
 assert '.site-header.is-condensed .brand img{' in css
 assert '.hero-divider{' in css and '.reveal{opacity:1;transform:none}' in css
 assert '@media(prefers-reduced-motion:reduce)' in css
+for responsive in ('overflow-x:clip','repeat(3,minmax(0,1fr))','repeat(2,minmax(0,1fr))','overflow-wrap:anywhere'):
+    assert responsive in css,responsive
+evidence=PUBLIC/'.well-known/request-service-handler.js'
+evidence_hash=hashlib.sha256(evidence.read_bytes()).hexdigest()
+assert '__EVIDENCE_SHA256__' in evidence.read_text()
 js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
 for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison]')",'--comparison-position'):
     assert marker in js,marker
@@ -172,4 +185,14 @@ worker=(PUBLIC/'_worker.js').read_text()
 for marker in ('url.pathname === "/api/request-service"','request.method !== "POST"','status:405','responsePage(422','ORIGINAL_CONTACT','et_pb_contact_name_0','_wpnonce-et-pb-contact-form-submitted-0','et_pb_contact_captcha_0','TURNSTILE_SECRET','turnstile/v0/siteverify','request.body.getReader()','total > maxBytes','origin !== new URL(request.url).origin','plain === "Thanks for contacting us"','formStillPresent','env.ASSETS.fetch(request)'):
     assert marker in worker,marker
 assert 'chris@leadfilament.com' not in worker and 'preventDefault' not in contact
+assert evidence_hash in worker
+assert 'x-handler-evidence-sha256' in worker
+for control in ('request.body.getReader()','const ORIGINAL_CONTACT = "https://dixonpoolsmd.com/contact/"','catch (error)','plain === "Thanks for contacting us"','formStillPresent'):
+    assert control in evidence.read_text(),control
+for key,record in DATA['colors']['evidence'].items():
+    source=Path('/home/chris/pitch-pipeline')/record['source_path']
+    assert source.is_file(),(key,source)
+    source_text=source.read_text().lower()
+    assert record['value'].lower() in source_text,(key,record['value'])
+    assert record['selector'] and record['property'] and record['original_role'],key
 print('PASS: 7 pages, sourced About/Services/FAQ copy, accessible before/after comparison, subpage hero media, legal pages, mandatory concept banners, hardened Request Service bridge, casual UX polish, links, assets, SEO, JSON-LD, and /scan rule')

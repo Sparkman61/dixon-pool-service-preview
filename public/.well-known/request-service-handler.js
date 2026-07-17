@@ -1,5 +1,5 @@
 // Public audit source: hash this placeholder-bearing file; the deployed Worker substitutes that SHA-256 and returns it in x-handler-evidence-sha256.
-const HANDLER_EVIDENCE_SHA256 = "a49278ce353b0130d7af0ce54d8edffd6eb56ae4b8120bc8f3e596ad89819aa3";
+const HANDLER_EVIDENCE_SHA256 = "__EVIDENCE_SHA256__";
 const ORIGINAL_CONTACT = "https://dixonpoolsmd.com/contact/";
 const MAX_BODY_BYTES = 32 * 1024;
 
