@@ -75,6 +75,17 @@ for name in PAGES:
     assert all(script.get('src') or script.get('type')=='application/ld+json' for script in d.scripts),name
     assert text.count('class="hero-divider hero-divider--wave"')==1,name
     assert text.count('data-sticky-header')==1,name
+    assert text.count('class="mobile-nav-toggle"')==1,name
+    assert text.count('aria-controls="primary-navigation"')==1,name
+    assert text.count('aria-expanded="false"')==1,name
+    assert text.count('id="primary-navigation"')==1,name
+    header=re.search(r'<header class="site-header".*?</header>',text,re.S)
+    assert header,name
+    nav_panel=re.search(r'<nav class="nav" id="primary-navigation".*?</nav>',header.group(0),re.S)
+    assert nav_panel,name
+    assert nav_panel.group(0).count('<a ')==5,name
+    assert 'class="header-cta call"' in header.group(0),name
+    assert 'class="header-cta call"' not in nav_panel.group(0),name
     assert not any(h is None or h=='' or h.lower().startswith('javascript:') for h in d.hrefs)
     assert all(img.get('alt','').strip() for img in d.images),name
     for ref in d.hrefs+d.srcs:
@@ -183,14 +194,14 @@ assert '.site-header{background:#fff;border-bottom:1px solid var(--line);positio
 assert '.site-header.is-condensed .brand img{' in css
 assert '.hero-divider{' in css and '.reveal{opacity:1;transform:none}' in css
 assert '@media(prefers-reduced-motion:reduce)' in css
-for responsive in ('overflow-x:clip','.nav{width:100%;display:flex;flex-wrap:wrap','repeat(2,minmax(0,1fr))','overflow-wrap:anywhere'):
+for responsive in ('overflow-x:clip','.nav{grid-column:1;grid-row:2;width:100%;display:flex;flex-wrap:wrap','repeat(2,minmax(0,1fr))','overflow-wrap:anywhere','@media (max-width: 768px)','.mobile-nav-enhanced .nav[data-mobile-open="true"]','.mobile-nav-enhanced .nav a { min-height: 44px','.header-cta{grid-column:2;grid-row:2;display:inline-flex','@media(max-width:768px)'):
     assert responsive in css,responsive
 assert 'grid-template-columns:repeat(3,minmax(0,1fr))' not in css
 evidence=PUBLIC/'.well-known/request-service-handler.js'
 evidence_hash=hashlib.sha256(evidence.read_bytes()).hexdigest()
 assert '__EVIDENCE_SHA256__' in evidence.read_text()
 js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
-for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison-id]')",'--comparison-position',"classList.add('is-enhanced')",'aria-valuetext'):
+for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison-id]')",'--comparison-position',"classList.add('is-enhanced')",'aria-valuetext',"document.documentElement.classList.add('mobile-nav-enhanced')","window.matchMedia('(max-width: 768px)')","event.key === 'Escape'","closeMenu({ restoreFocus: true })","event.target.closest('a')","!panel.contains(event.target)","addEventListener?.('change', () => closeMenu())"):
     assert marker in js,marker
 
 contact=(PUBLIC/'contact.html').read_text()
@@ -232,4 +243,8 @@ for key,record in DATA['colors']['evidence'].items():
     source_text=source.read_text().lower()
     assert record['value'].lower() in source_text,(key,record['value'])
     assert record['selector'] and record['property'] and record['original_role'],key
-print('PASS: 7 pages, sourced About/Services/FAQ copy, accessible before/after comparison, subpage hero media, legal pages, mandatory concept banners, hardened Request Service bridge, casual UX polish, links, assets, SEO, JSON-LD, and /scan rule')
+builder=(ROOT/'build.py').read_text()
+assert 'from accessible_mobile_nav import (' in builder
+assert 'return render_mobile_nav(' in builder
+assert (ROOT/'accessible_mobile_nav.py').is_file()
+print('PASS: 7 pages, sourced About/Services/FAQ copy, accessible mobile navigation and before/after comparison, subpage hero media, legal pages, mandatory concept banners, hardened Request Service bridge, casual UX polish, links, assets, SEO, JSON-LD, and /scan rule')

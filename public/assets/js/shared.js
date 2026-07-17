@@ -18,6 +18,48 @@
   sync();
 });
 
+
+document.querySelectorAll('.mobile-nav-toggle[aria-controls]').forEach((toggle) => {
+  const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+  if (!panel) return;
+
+  const mobileQuery = window.matchMedia('(max-width: 768px)');
+  const closeMenu = ({ restoreFocus = false } = {}) => {
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-label', 'Open navigation menu');
+    panel.dataset.mobileOpen = 'false';
+    if (restoreFocus) toggle.focus();
+  };
+
+  document.documentElement.classList.add('mobile-nav-enhanced');
+  closeMenu();
+
+  toggle.addEventListener('click', () => {
+    const opening = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(opening));
+    toggle.setAttribute('aria-label', opening ? 'Close navigation menu' : 'Open navigation menu');
+    panel.dataset.mobileOpen = String(opening);
+  });
+
+  panel.addEventListener('click', (event) => {
+    if (event.target.closest('a') && mobileQuery.matches) closeMenu();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+      closeMenu({ restoreFocus: true });
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (mobileQuery.matches && toggle.getAttribute('aria-expanded') === 'true' &&
+        !panel.contains(event.target) && !toggle.contains(event.target)) closeMenu();
+  });
+
+  mobileQuery.addEventListener?.('change', () => closeMenu());
+});
+
+
   const challenge = document.querySelector('[data-upstream-challenge]');
   if (challenge) {
     const prompt = challenge.querySelector('[data-challenge-prompt]');

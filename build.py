@@ -10,6 +10,11 @@ from pathlib import Path
 from urllib.parse import quote_plus
 
 from accessible_before_after import CSS_SNIPPET, JS_SNIPPET, render_before_after, validate_pair
+from accessible_mobile_nav import (
+    CSS_SNIPPET as MOBILE_NAV_CSS,
+    JS_SNIPPET as MOBILE_NAV_JS,
+    render_mobile_nav,
+)
 
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service.json')
@@ -120,11 +125,11 @@ PAGES = {
     },
 }
 
-CSS = CSS_SNIPPET + '\n' + r'''
+CSS = CSS_SNIPPET + '\n' + MOBILE_NAV_CSS + '\n' + r'''
 :root{--primary:#00afe7;--secondary:#2ea3f2;--navy:#105682;--ink:#22313b;--muted:#5b6972;--pale:#bfebf9;--white:#fff;--line:#cce8f2;--shadow:0 14px 35px rgba(16,86,130,.13);--radius:18px}
 *{box-sizing:border-box}html{scroll-behavior:smooth;max-width:100%;overflow-x:clip}body{margin:0;max-width:100%;overflow-x:clip;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;background:#fff}img{max-width:100%;display:block}a{color:inherit}.skip{position:absolute;left:-9999px}.skip:focus{left:1rem;top:1rem;background:#fff;padding:.7rem 1rem;z-index:20}
 .concept-banner{position:relative;z-index:10;padding:.65rem 1rem;background:#fff3bf;color:#2b250d;text-align:center;font-size:.9rem;font-weight:700;border-bottom:1px solid #eadb8a;overflow-wrap:anywhere}.concept-banner a{color:#105682;font-weight:900}
-.container{width:min(1120px,calc(100% - 2rem));margin:auto}.topbar{background:var(--primary);color:#052d3d;font-size:.9rem}.topbar .container{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0}.topbar a{font-weight:800;text-decoration:none}.site-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:90;box-shadow:0 4px 18px rgba(16,86,130,.12);transition:box-shadow .22s ease}.header-row{display:flex;align-items:flex-start;flex-direction:column;gap:.5rem;padding:.65rem 0;transition:padding .22s ease;min-width:0}.brand{display:flex;align-items:center;gap:1rem;text-decoration:none;min-width:0;max-width:100%}.brand img{width:220px;height:118px;max-width:100%;object-fit:contain;transition:width .22s ease,height .22s ease}.brand-copy{display:none}.nav{width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;min-width:0}.nav a{flex:0 1 auto;padding:.65rem .9rem;text-decoration:none;font-weight:800;color:var(--navy);border-radius:999px;transition:padding .22s ease,background .15s ease;min-width:0;overflow-wrap:anywhere;text-align:center}.nav a:hover,.nav a:focus,.nav a[aria-current=page]{background:var(--pale);color:#006b91}.nav .call{background:var(--primary);color:#072f40;flex-shrink:0}.site-header.is-condensed .header-row{padding:.2rem 0}.site-header.is-condensed .brand img{width:175px;height:94px}.site-header.is-condensed .nav a{padding:.45rem .72rem}main [id]{scroll-margin-top:8rem}
+.container{width:min(1120px,calc(100% - 2rem));margin:auto}.topbar{background:var(--primary);color:#052d3d;font-size:.9rem}.topbar .container{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0}.topbar a{font-weight:800;text-decoration:none}.site-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:90;box-shadow:0 4px 18px rgba(16,86,130,.12);transition:box-shadow .22s ease}.header-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.5rem;padding:.65rem 0;transition:padding .22s ease;min-width:0}.brand{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:1rem;text-decoration:none;min-width:0;max-width:100%}.brand img{width:220px;height:118px;max-width:100%;object-fit:contain;transition:width .22s ease,height .22s ease}.brand-copy{display:none}.nav{grid-column:1;grid-row:2;width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;min-width:0}.nav a{flex:0 1 auto;padding:.65rem .9rem;text-decoration:none;font-weight:800;color:var(--navy);border-radius:999px;transition:padding .22s ease,background .15s ease;min-width:0;overflow-wrap:anywhere;text-align:center}.nav a:hover,.nav a:focus,.nav a[aria-current=page]{background:var(--pale);color:#006b91}.header-cta{grid-column:2;grid-row:2;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.65rem .9rem;border-radius:999px;background:var(--primary);color:#072f40;font-weight:900;text-decoration:none;flex-shrink:0}.site-header.is-condensed .header-row{padding:.2rem 0}.site-header.is-condensed .brand img{width:175px;height:94px}.site-header.is-condensed .nav a{padding:.45rem .72rem}main [id]{scroll-margin-top:8rem}
 .hero{position:relative;overflow:hidden;background:var(--primary);color:#fff;padding:7rem 0;min-height:590px;display:flex;align-items:center}.hero-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0}.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,175,231,.91) 0%,rgba(0,175,231,.78) 46%,rgba(0,175,231,.35) 100%);z-index:1}.hero-grid{position:relative;z-index:2}.hero-copy{max-width:700px}.eyebrow{margin:0 0 .8rem;color:#fff;text-transform:uppercase;letter-spacing:.13em;font-weight:900;font-size:.8rem}.hero h1{font-size:clamp(2.4rem,5vw,4.5rem);line-height:1.03;margin:.2rem 0 1.2rem;text-shadow:0 2px 18px rgba(16,86,130,.35)}.hero p{font-size:1.15rem;color:#fff;max-width:650px}.rating-badge{display:inline-block;margin-top:1.25rem;background:#fff;color:var(--navy);padding:.75rem 1rem;border-radius:14px;box-shadow:var(--shadow);font-weight:900}.stars{color:#f4b400}.actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.6rem}.btn{display:inline-block;border-radius:999px;padding:.8rem 1.15rem;text-decoration:none;font-weight:900;border:2px solid transparent}.btn-primary{background:#fff;color:var(--navy)}.btn-light{border-color:#fff;color:#fff}.btn-navy{background:var(--navy);color:#fff}
 .section{padding:5rem 0}.section-alt{background:#f5fbfd}.section-head{max-width:720px;margin-bottom:2.2rem}.section-head h2,.page-hero h1{color:var(--navy);font-size:clamp(2rem,4vw,3rem);line-height:1.12;margin:0 0 .7rem}.section-head p{color:var(--muted);font-size:1.05rem}.grid{display:grid;gap:1.2rem;min-width:0}.service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.card{min-width:0;overflow-wrap:anywhere;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1.5rem;box-shadow:0 8px 24px rgba(16,86,130,.07)}.card h3{color:var(--navy);margin:.1rem 0 .5rem}.service-card{border-top:5px solid var(--primary);min-height:125px}.service-card p{margin:.5rem 0 0;color:var(--muted)}.proof-grid{grid-template-columns:repeat(3,1fr)}.proof{text-align:center}.proof strong{display:block;font-size:2rem;color:var(--navy)}.review-grid{grid-template-columns:repeat(3,1fr)}blockquote{margin:0;font-style:italic}.review footer{margin-top:1rem;color:var(--navy);font-weight:900}.contact-band{background:var(--primary);color:#052d3d}.contact-row{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding:2.2rem 0}.contact-row h2{margin:0}.contact-row p{margin:.25rem 0 0}.contact-row .btn{background:var(--navy);color:#fff}
 .page-hero{position:relative;overflow:hidden;background:var(--navy);color:#fff;padding:4.75rem 0;border-bottom:4px solid var(--secondary)}.page-hero-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:.62}.page-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,86,130,.86),rgba(0,175,231,.42))}.page-hero .container{position:relative;z-index:1}.page-hero h1{color:#fff}.page-hero p{max-width:760px;color:#fff;font-size:1.1rem}.split{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}.split>img{border-radius:var(--radius);box-shadow:var(--shadow);aspect-ratio:4/3;object-fit:cover}.fact-list{display:grid;gap:1rem}.fact{border-left:5px solid var(--primary);padding:1rem 1.2rem;background:var(--pale);border-radius:0 12px 12px 0}.fact strong{display:block;color:var(--navy)}.contact-grid{grid-template-columns:1fr 1fr}.contact-card h2{margin-top:0;color:var(--navy)}.detail-list{list-style:none;padding:0;margin:0}.detail-list li{padding:.8rem 0;border-bottom:1px solid var(--line)}.detail-list a{color:var(--navy);font-weight:800}.socials{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:1.2rem}.inquiry-form{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.form-field{display:grid;gap:.35rem}.form-field-full{grid-column:1/-1}.form-field label{font-weight:800;color:var(--navy)}.form-field input,.form-field textarea{width:100%;padding:.8rem;border:1px solid #8cb8ca;border-radius:10px;font:inherit;color:var(--ink);background:#fff}.form-field textarea{min-height:150px;resize:vertical}.form-field input:focus,.form-field textarea:focus{outline:3px solid rgba(0,175,231,.25);border-color:var(--primary)}.form-note{grid-column:1/-1;color:var(--muted);font-size:.92rem}.honeypot{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}.inquiry-form .btn{cursor:pointer;border:0;justify-self:start}
@@ -133,7 +138,8 @@ CSS = CSS_SNIPPET + '\n' + r'''
 .site-footer{background:#071f2b;color:#c8d8df;padding:3rem 0 1.2rem}.footer-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:2rem}.site-footer h3{color:#fff}.site-footer a{display:block;color:#c8d8df;margin:.35rem 0}.footer-bottom{border-top:1px solid #29424e;margin-top:2rem;padding-top:1rem;text-align:center;font-size:.9rem}
 @media(min-width:1401px){.container{margin-left:1rem;margin-right:auto}.concept-banner{text-align:left}}
 @media(max-width:1400px){.header-row{align-items:flex-start;flex-direction:column;gap:.5rem}.split,.contact-grid{grid-template-columns:minmax(0,1fr)}.hero{padding:5rem 0;min-height:540px}.hero::after{background:rgba(0,175,231,.78)}.service-grid,.proof-grid,.review-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-row{align-items:flex-start;flex-direction:column;min-width:0}.contact-row>*{max-width:100%}.btn{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}.footer-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.topbar .container{flex-direction:column;gap:.1rem}.brand img{width:175px;height:94px}.site-header.is-condensed .header-row{gap:.25rem}.site-header.is-condensed .brand img{width:135px;height:72px}.nav a{padding:.55rem .45rem;font-size:.86rem}.site-header.is-condensed .nav a{padding:.4rem .35rem;font-size:.8rem}main [id]{scroll-margin-top:14rem}.hero h1{font-size:2.55rem}.service-grid,.proof-grid,.review-grid,.footer-grid,.inquiry-form,.comparison-stage{grid-template-columns:minmax(0,1fr)}.form-field-full{grid-column:auto}.section{padding:3.8rem 0}.contact-row{padding:1.8rem 0}}
+@media(max-width:768px){.header-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:.5rem}.brand{grid-column:1;grid-row:1}.mobile-nav-toggle{grid-column:2;grid-row:1}.header-cta{grid-column:3;grid-row:1;min-width:44px;white-space:nowrap}.nav{grid-column:1/-1;grid-row:2}.brand img{width:150px;height:80px}.site-header.is-condensed .brand img{width:125px;height:67px}.mobile-nav-enhanced .nav{width:100%;max-height:calc(100vh - 8rem);overflow-y:auto}.mobile-nav-enhanced .nav a{justify-content:flex-start;padding:.7rem 1rem}.site-header.is-condensed .nav a{padding:.7rem 1rem}main [id]{scroll-margin-top:10rem}}
+@media(max-width:520px){.topbar .container{flex-direction:column;gap:.1rem}.header-row{gap:.35rem}.brand img{width:120px;height:64px}.header-cta{padding:.55rem .65rem;font-size:.82rem}.site-header.is-condensed .header-row{gap:.25rem}.site-header.is-condensed .brand img{width:105px;height:56px}.nav a{padding:.65rem .75rem;font-size:.9rem}.site-header.is-condensed .nav a{padding:.65rem .75rem;font-size:.9rem}main [id]{scroll-margin-top:10rem}.hero h1{font-size:2.55rem}.service-grid,.proof-grid,.review-grid,.footer-grid,.inquiry-form,.comparison-stage{grid-template-columns:minmax(0,1fr)}.form-field-full{grid-column:auto}.section{padding:3.8rem 0}.contact-row{padding:1.8rem 0}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.header-row,.brand img,.nav a,.reveal.reveal-pending,.comparison-after{transition:none}.reveal.reveal-pending{opacity:1;transform:none}}
 '''
 
@@ -146,6 +152,8 @@ JS = r'''(() => {
   }
 
   ''' + JS_SNIPPET + r'''
+
+''' + MOBILE_NAV_JS + r'''
 
   const challenge = document.querySelector('[data-upstream-challenge]');
   if (challenge) {
@@ -398,13 +406,20 @@ def canonical(filename: str) -> str:
 
 def nav(filename: str) -> str:
     items=[]
+    current_href=None
     for page, meta in PAGES.items():
         if meta.get('footer_only'): continue
         href = '#top' if filename == 'index.html' and page == 'index.html' else ('index.html#top' if page == 'index.html' else page)
-        current = ' aria-current="page"' if page == filename else ''
-        items.append(f'<a href="{href}"{current}>{html.escape(meta["label"])}</a>')
-    items.append(f'<a class="call" href="tel:{PHONE_HREF}">Call {html.escape(PHONE)}</a>')
-    return ''.join(items)
+        items.append((meta['label'], href))
+        if page == filename:
+            current_href=href
+    return render_mobile_nav(
+        nav_id='primary-navigation',
+        links=items,
+        cta_label=f'Call {PHONE}',
+        cta_href=f'tel:{PHONE_HREF}',
+        current_href=current_href,
+    )
 
 
 def json_ld() -> str:
@@ -443,7 +458,7 @@ def shell(filename: str, body: str) -> str:
 <link rel="stylesheet" href="css/site.css?v=cycle3d">{structured}</head>
 <body id="top"><div class="concept-banner">📋 This is a free concept redesign — {html.escape(BUSINESS)}'s actual site is at <a href="{html.escape(ORIGINAL_SITE_URL,quote=True)}" target="_blank" rel="noopener">{html.escape(ORIGINAL_SITE_URL.removeprefix('https://').removeprefix('http://').rstrip('/'))}</a></div><a class="skip" href="#main-content">Skip to main content</a>
 <div class="topbar"><div class="container"><span>Frederick &amp; surrounding counties</span><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></div></div>
-<header class="site-header" data-sticky-header><div class="container header-row"><a class="brand" href="{'#top' if home else 'index.html#top'}"><img src="{rel_asset('logo_path')}" alt="Dixon Pool Service logo"><span class="brand-copy"><strong>Dixon Pool Service</strong><span>Pool care in Frederick, Maryland</span></span></a><nav class="nav" aria-label="Main navigation">{nav(filename)}</nav></div></header>
+<header class="site-header" data-sticky-header><div class="container header-row"><a class="brand" href="{'#top' if home else 'index.html#top'}"><img src="{rel_asset('logo_path')}" alt="Dixon Pool Service logo"><span class="brand-copy"><strong>Dixon Pool Service</strong><span>Pool care in Frederick, Maryland</span></span></a>{nav(filename)}</div></header>
 {body}
 <footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>Dixon Pool Service</h3><p>{html.escape(ADDRESS)}</p><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></div><div><h3>Explore</h3><a href="about.html">About</a><a href="services.html">Services</a><a href="faq.html">FAQ</a><a href="contact.html">Contact</a><a href="privacy-policy.html">Privacy Policy</a><a href="terms-of-service.html">Terms of Service</a></div><div><h3>Hours &amp; social</h3><p>Monday–Friday<br>8 AM–4 PM</p><a href="{FACEBOOK}">Facebook</a><a href="{TIKTOK}">TikTok</a></div></div><div class="footer-bottom">Dixon Pool Service &bull; Frederick, Maryland</div></div></footer>
 <script src="assets/js/shared.js" defer></script>
