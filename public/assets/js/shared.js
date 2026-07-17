@@ -6,13 +6,17 @@
     window.addEventListener('scroll', syncHeader, { passive: true });
   }
 
-  document.querySelectorAll('[data-comparison]').forEach((comparison) => {
-    const range = comparison.querySelector('input[type="range"]');
-    if (!range) return;
-    const sync = () => comparison.style.setProperty('--comparison-position', `${range.value}%`);
-    range.addEventListener('input', sync);
-    sync();
-  });
+  document.querySelectorAll('[data-comparison-id]').forEach((comparison) => {
+  const range = comparison.querySelector('input[type="range"]');
+  if (!range) return;
+  comparison.classList.add('is-enhanced');
+  const sync = () => {
+    comparison.style.setProperty('--comparison-position', `${range.value}%`);
+    range.setAttribute('aria-valuetext', `${range.value}% after image revealed`);
+  };
+  range.addEventListener('input', sync);
+  sync();
+});
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reducedMotion || !('IntersectionObserver' in window)) return;

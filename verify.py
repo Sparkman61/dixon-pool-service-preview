@@ -4,9 +4,11 @@ from html.parser import HTMLParser
 from pathlib import Path
 import hashlib,json,re,struct
 
+import build
+
 ROOT=Path(__file__).resolve().parent
 PUBLIC=ROOT/'public'
-PAGES=['index.html','about.html','services.html','faq.html','contact.html','privacy.html','terms.html']
+PAGES=['index.html','about.html','services.html','faq.html','contact.html','privacy-policy.html','terms-of-service.html']
 DATA=json.loads(Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service.json').read_text())
 
 class Doc(HTMLParser):
@@ -36,7 +38,17 @@ def local_target(page,ref):
     return target,frag
 
 assert sorted(p.name for p in PUBLIC.glob('*.html'))==sorted(PAGES)
-assert (PUBLIC/'_redirects').read_text()=='/scan / 302\n'
+source_pages={item['label'] for item in DATA['page_inventory']}
+assert source_pages==set(build.SOURCE_PAGE_INVENTORY)
+assert set(build.SOURCE_PAGE_INVENTORY.values()).issubset(PAGES)
+assert build.REQUIRED_STRUCTURAL_PAGES.issubset(PAGES)
+assert set(PAGES)==set(build.SOURCE_PAGE_INVENTORY.values()) | build.REQUIRED_STRUCTURAL_PAGES | build.AUTHORIZED_ADDITIONAL_PAGES
+assert set(build.PAGE_HERO_MAP)==set(PAGES)-{'index.html'}
+assert (PUBLIC/'_redirects').read_text()==(
+    '/scan / 302\n'
+    '/privacy.html /privacy-policy.html 301\n'
+    '/terms.html /terms-of-service.html 301\n'
+)
 assert '/scan' not in (PUBLIC/'sitemap.xml').read_text()
 assert 'User-agent:' in (PUBLIC/'robots.txt').read_text()
 
@@ -80,7 +92,7 @@ for ident in ('top','services','why-dixon','reviews','contact'): assert ident in
 for href in ('#top','#services','#contact'): assert href in home.hrefs
 for name in PAGES[1:]: assert 'index.html#top' in docs[name].hrefs
 for name in PAGES:
-    for href in ('about.html','services.html','faq.html','contact.html','privacy.html','terms.html'):
+    for href in ('about.html','services.html','faq.html','contact.html','privacy-policy.html','terms-of-service.html'):
         assert href in docs[name].hrefs,(name,href)
 
 home_text=(PUBLIC/'index.html').read_text()
@@ -112,6 +124,10 @@ for name in PAGES[1:]:
 
 services=(PUBLIC/'services.html').read_text()
 source_services=Path('/home/chris/pitch-pipeline/01_scraped/dixon-pool-service-assets/source/services.html').read_text()
+assert set(DATA['services']) == set(build.SERVICE_DESCRIPTIONS)
+service_card_blocks = re.findall(r'<article class="card service-card">(.*?)</article>', services, re.S)
+assert len(service_card_blocks) == len(DATA['services'])
+assert all(re.search(r'<h3>.+?</h3><p>.+?</p>', block, re.S) for block in service_card_blocks)
 assert DATA['faq_page_authorized'] is True and len(DATA['faq_pairs']) == 11
 pair=DATA['before_after_pairs'][0]
 assert pair['id']=='services-weekly-maintenance-pair-1' and pair['approved'] is True
@@ -123,12 +139,19 @@ for copy in (
     'Looking to adjust your pool pump, or control your pool or spa temperatures',
     'Pool heater tune-up, repair, and troubleshooting can be a very daunting task',
     'Need a New Safety Cover for Your Pool?',
+    'Yes, Dixon Pool Service can help to repair or replace any filtration equipment. (ie. Pumps, Filters, Heaters, Pool lights, cleaners etc.)',
 ):
     assert copy in source_services,copy
     assert copy in services,copy
 assert services.count('data-comparison')==1
-assert '<input id="pool-comparison" type="range" min="0" max="100" value="50">' in services
+assert f'data-comparison-id="{pair["id"]}"' in services
+assert 'from accessible_before_after import CSS_SNIPPET, JS_SNIPPET, render_before_after, validate_pair' in (ROOT/'build.py').read_text()
+assert 'return render_before_after(' in (ROOT/'build.py').read_text()
+assert 'validate_pair(BEFORE_AFTER_PAIR)' in (ROOT/'build.py').read_text()
+assert (ROOT/'accessible_before_after.py').is_file()
+assert '<input id="pool-comparison" type="range" min="0" max="100" value="50" aria-valuetext="50% after image revealed">' in services
 assert 'assets/pool-before.jpg' in services and 'assets/pool-after.jpg' in services
+assert services.count('data-source-url="https://dixonpoolsmd.com/wp-content/uploads/2024/03/') == 2
 for role,name in [('before','pool-before.jpg'),('after','pool-after.jpg')]:
     source=Path('/home/chris/pitch-pipeline')/pair[role]['local_path']
     assert hashlib.sha256(source.read_bytes()).hexdigest()==pair[role]['sha256'],name
@@ -142,13 +165,15 @@ for copy in ('Dixon Pool Service was established in 2005 by Thomas Dixon, Sr.','
 
 faq=(PUBLIC/'faq.html').read_text()
 assert faq.count('<details>')==11 and faq.count('<summary>')==11
+assert faq.count('class="faq-item"')==11 and faq.count('data-faq-pair-id=')==11 and faq.count('data-source-url="https://dixonpoolsmd.com/services/"')==11
 for question in ('Do you clean pools?','Do you replace pool equipment?','Do you re-plaster pools?','Do you give free estimates?','Do you deliver pool water?','Do you work on above ground pools?','Do you have a store?','Do you install safety covers?','Do you offer weekly pool service?','Do you take credit cards?','When should I open my pool?'):
     assert question in source_services,question
     assert question in faq,question
-assert '<h1>Privacy Policy</h1>' in (PUBLIC/'privacy.html').read_text()
-assert '<h1>Terms of Use</h1>' in (PUBLIC/'terms.html').read_text()
-for name in ('privacy.html','terms.html'):
+assert '<h1>Privacy Policy</h1>' in (PUBLIC/'privacy-policy.html').read_text()
+assert '<h1>Terms of Service</h1>' in (PUBLIC/'terms-of-service.html').read_text()
+for name in ('privacy-policy.html','terms-of-service.html'):
     assert 'class="container legal" data-content-lineage="approved-preview-policy"' in (PUBLIC/name).read_text(),name
+    assert 'data-preview-hostname="dixon-pool-service-preview.pages.dev"' in (PUBLIC/name).read_text(),name
 css=(PUBLIC/'css'/'site.css').read_text()
 for color in ('#00afe7','#2ea3f2','#105682','#bfebf9'): assert color in css,color
 assert 'border-bottom:4px solid var(--secondary)' in css
@@ -158,13 +183,14 @@ assert '.site-header{background:#fff;border-bottom:1px solid var(--line);positio
 assert '.site-header.is-condensed .brand img{' in css
 assert '.hero-divider{' in css and '.reveal{opacity:1;transform:none}' in css
 assert '@media(prefers-reduced-motion:reduce)' in css
-for responsive in ('overflow-x:clip','repeat(3,minmax(0,1fr))','repeat(2,minmax(0,1fr))','overflow-wrap:anywhere'):
+for responsive in ('overflow-x:clip','.nav{width:100%;display:flex;flex-wrap:wrap','repeat(2,minmax(0,1fr))','overflow-wrap:anywhere'):
     assert responsive in css,responsive
+assert 'grid-template-columns:repeat(3,minmax(0,1fr))' not in css
 evidence=PUBLIC/'.well-known/request-service-handler.js'
 evidence_hash=hashlib.sha256(evidence.read_bytes()).hexdigest()
 assert '__EVIDENCE_SHA256__' in evidence.read_text()
 js=(PUBLIC/'assets'/'js'/'shared.js').read_text()
-for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison]')",'--comparison-position'):
+for marker in ("classList.toggle('is-condensed'",'new IntersectionObserver','prefers-reduced-motion: reduce',"classList.add('reveal', 'reveal-pending')",'const revealPassed = () =>',"querySelectorAll('[data-comparison-id]')",'--comparison-position',"classList.add('is-enhanced')",'aria-valuetext'):
     assert marker in js,marker
 
 contact=(PUBLIC/'contact.html').read_text()
