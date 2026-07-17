@@ -147,6 +147,29 @@ JS = r'''(() => {
 
   ''' + JS_SNIPPET + r'''
 
+  const challenge = document.querySelector('[data-upstream-challenge]');
+  if (challenge) {
+    const prompt = challenge.querySelector('[data-challenge-prompt]');
+    const token = challenge.querySelector('input[name="upstream_challenge_token"]');
+    const answer = challenge.querySelector('input[name="upstream_captcha_answer"]');
+    const submit = challenge.closest('form').querySelector('button[type="submit"]');
+    fetch('/api/request-service-challenge', { headers: { accept: 'application/json' } })
+      .then((response) => {
+        if (!response.ok) throw new Error('challenge unavailable');
+        return response.json();
+      })
+      .then((data) => {
+        if (!data.prompt || !data.token) throw new Error('invalid challenge');
+        prompt.textContent = data.prompt;
+        token.value = data.token;
+        answer.disabled = false;
+        submit.disabled = false;
+      })
+      .catch(() => {
+        prompt.textContent = 'The verification question is temporarily unavailable. Please call (301) 607-1011.';
+      });
+  }
+
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reducedMotion || !('IntersectionObserver' in window)) return;
 
@@ -204,6 +227,59 @@ function field(form, name, max) {
   return clean;
 }
 
+function base64urlEncode(bytes) {
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64urlDecode(value) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  return Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
+}
+
+async function challengeKey(secret) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptChallenge(payload, secret) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await challengeKey(secret);
+  const plaintext = new TextEncoder().encode(JSON.stringify(payload));
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, plaintext));
+  const packed = new Uint8Array(iv.length + ciphertext.length);
+  packed.set(iv); packed.set(ciphertext, iv.length);
+  return base64urlEncode(packed);
+}
+
+async function decryptChallenge(token, secret) {
+  const packed = base64urlDecode(token);
+  if (packed.length < 29) throw new Error("Invalid challenge token");
+  const iv = packed.slice(0, 12);
+  const key = await challengeKey(secret);
+  const plaintext = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, packed.slice(12));
+  const payload = JSON.parse(new TextDecoder().decode(plaintext));
+  if (!payload.nonce || !payload.expires || Date.now() > payload.expires) throw new Error("Expired challenge token");
+  return payload;
+}
+
+async function issueChallenge(env) {
+  if (!env.TURNSTILE_SECRET) return new Response(JSON.stringify({error:"unavailable"}), {status:503, headers:{"content-type":"application/json","cache-control":"no-store","x-handler-evidence-sha256":HANDLER_EVIDENCE_SHA256}});
+  try {
+    const page = await fetch(ORIGINAL_CONTACT, {headers:{"user-agent":"Website Rescue contact-form bridge/1.1","accept":"text/html"}});
+    if (!page.ok) throw new Error("Original contact form unavailable");
+    const source = await page.text();
+    const nonce = extract(source, /name="_wpnonce-et-pb-contact-form-submitted-0" value="([^"]+)"/, "security token");
+    const captchaTag = extract(source, /(<input[^>]*name="et_pb_contact_captcha_0"[^>]*>)/, "CAPTCHA field");
+    const first = extract(captchaTag, /data-first_digit="(\d+)"/, "first CAPTCHA digit");
+    const second = extract(captchaTag, /data-second_digit="(\d+)"/, "second CAPTCHA digit");
+    const token = await encryptChallenge({nonce, expires:Date.now() + 10 * 60 * 1000}, env.TURNSTILE_SECRET);
+    return new Response(JSON.stringify({prompt:`What is ${first} + ${second}?`, token}), {headers:{"content-type":"application/json","cache-control":"no-store","x-content-type-options":"nosniff","x-handler-evidence-sha256":HANDLER_EVIDENCE_SHA256}});
+  } catch (_) {
+    return new Response(JSON.stringify({error:"unavailable"}), {status:502, headers:{"content-type":"application/json","cache-control":"no-store","x-handler-evidence-sha256":HANDLER_EVIDENCE_SHA256}});
+  }
+}
+
 async function readBoundedBody(request, maxBytes) {
   if (!request.body) return "";
   const reader = request.body.getReader();
@@ -247,6 +323,15 @@ async function forwardToOriginal(request, env) {
     return responsePage(422, "Please complete the form", "Name, phone number, email address, and message are required.");
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) return responsePage(422, "Check your email", "Enter a valid email address.");
+  const challengeToken = field(form, "upstream_challenge_token", 4096);
+  const userCaptchaAnswer = field(form, "upstream_captcha_answer", 12);
+  if (!challengeToken || !/^\d{1,12}$/.test(userCaptchaAnswer)) return responsePage(422, "Verification required", "Answer the service form verification question and try again.");
+  let challenge;
+  try {
+    challenge = await decryptChallenge(challengeToken, env.TURNSTILE_SECRET || "");
+  } catch (_) {
+    return responsePage(422, "Verification expired", "Reload the Request Service page and answer the new verification question.");
+  }
   const turnstile = field(form, "cf-turnstile-response", 4096);
   if (!turnstile || !env.TURNSTILE_SECRET) return responsePage(422, "Verification required", "Complete the anti-spam check and try again.");
   const verifyBody = new URLSearchParams({secret:env.TURNSTILE_SECRET,response:turnstile,remoteip:request.headers.get("CF-Connecting-IP") || ""});
@@ -254,28 +339,16 @@ async function forwardToOriginal(request, env) {
   const verdict = await verify.json();
   if (!verify.ok || verdict.success !== true) return responsePage(422, "Verification failed", "Complete the anti-spam check and try again.");
 
-  const page = await fetch(ORIGINAL_CONTACT, {headers:{"user-agent":"Website Rescue contact-form bridge/1.0","accept":"text/html"}});
-  if (!page.ok) return responsePage(502, "Service temporarily unavailable", "Please call Dixon Pool Service at (301) 607-1011.");
-  const source = await page.text();
-  let nonce, first, second;
-  try {
-    nonce = extract(source, /name="_wpnonce-et-pb-contact-form-submitted-0" value="([^"]+)"/, "security token");
-    const captchaTag = extract(source, /(<input[^>]*name="et_pb_contact_captcha_0"[^>]*>)/, "CAPTCHA field");
-    first = Number(extract(captchaTag, /data-first_digit="(\d+)"/, "first CAPTCHA digit"));
-    second = Number(extract(captchaTag, /data-second_digit="(\d+)"/, "second CAPTCHA digit"));
-  } catch (_) {
-    return responsePage(502, "Service temporarily unavailable", "Please call Dixon Pool Service at (301) 607-1011.");
-  }
   const upstream = new URLSearchParams({
     et_pb_contact_name_0: values.name,
     et_pb_contact_phone_number_0: values.phone,
     et_pb_contact_email_0: values.email,
     et_pb_contact_service_0: values.service,
     et_pb_contact_message_0: values.message,
-    et_pb_contact_captcha_0: String(first + second),
+    et_pb_contact_captcha_0: userCaptchaAnswer,
     et_pb_contactform_submit_0: "et_contact_proccess",
     et_builder_submit_button: "Submit",
-    "_wpnonce-et-pb-contact-form-submitted-0": nonce,
+    "_wpnonce-et-pb-contact-form-submitted-0": challenge.nonce,
     _wp_http_referer: "/contact/",
   });
   const sent = await fetch(ORIGINAL_CONTACT, {method:"POST", headers:{"content-type":"application/x-www-form-urlencoded","user-agent":"Website Rescue contact-form bridge/1.0","referer":ORIGINAL_CONTACT}, body:upstream.toString(), redirect:"follow"});
@@ -297,6 +370,10 @@ async function forwardToOriginal(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/api/request-service-challenge") {
+      if (request.method !== "GET") return new Response("Method Not Allowed", {status:405, headers:{allow:"GET","x-handler-evidence-sha256":HANDLER_EVIDENCE_SHA256}});
+      return issueChallenge(env);
+    }
     if (url.pathname === "/api/request-service") {
       if (request.method !== "POST") return new Response("Method Not Allowed", {status:405, headers:{allow:"POST","x-handler-evidence-sha256":HANDLER_EVIDENCE_SHA256}});
       return forwardToOriginal(request, env);
@@ -452,7 +529,7 @@ def terms_page() -> str:
 
 def contact_page() -> str:
     maps='https://www.google.com/maps/search/?api=1&query='+quote_plus(ADDRESS)
-    body=f'''<main id="main-content">{page_hero('contact.html','Get in touch','Request Pool Service','Send a service request or call during listed business hours.')}<section class="section"><div class="container grid contact-grid"><article class="card contact-card"><h2>Request Service</h2><p>This form preserves the original site's service-inquiry purpose and sends requests through Dixon Pool Service's existing contact system.</p><form class="inquiry-form" action="/api/request-service" method="post"><div class="honeypot" aria-hidden="true"><label for="company-website">Company website</label><input id="company-website" name="company_website" type="text" tabindex="-1" autocomplete="off"></div><div class="form-field"><label for="request-name">Name</label><input id="request-name" name="name" type="text" autocomplete="name" required maxlength="120"></div><div class="form-field"><label for="request-phone">Phone Number</label><input id="request-phone" name="phone" type="tel" autocomplete="tel" required maxlength="40"></div><div class="form-field form-field-full"><label for="request-email">Email Address</label><input id="request-email" name="email" type="email" autocomplete="email" required maxlength="254"></div><div class="form-field form-field-full"><label for="request-service">Service(s) Needed</label><input id="request-service" name="service" type="text" autocomplete="off" maxlength="240"></div><div class="form-field form-field-full"><label for="request-message">Message</label><textarea id="request-message" name="message" required maxlength="4000"></textarea></div><div class="form-field form-field-full"><div class="cf-turnstile" data-sitekey="{html.escape(TURNSTILE_SITEKEY, quote=True)}"></div></div><p class="form-note">Cloudflare verifies the anti-spam check, then the demo forwards your request to Dixon Pool Service's original contact system. The demo does not intentionally store inquiry details.</p><button class="btn btn-navy" type="submit">Send Service Request</button></form></article><article class="card contact-card"><h2>Contact details</h2><ul class="detail-list"><li><strong>Phone</strong><br><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></li><li><strong>Address</strong><br>{html.escape(ADDRESS)}<br><a href="{maps}">Open in Google Maps</a></li><li><strong>Hours</strong><br>Monday–Friday, 8 AM–4 PM</li></ul><div class="socials"><a class="btn btn-navy" href="{FACEBOOK}">Facebook</a><a class="btn btn-primary" href="{TIKTOK}">TikTok</a></div></article></div></section><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></main>'''
+    body=f'''<main id="main-content">{page_hero('contact.html','Get in touch','Request Pool Service','Send a service request or call during listed business hours.')}<section class="section"><div class="container grid contact-grid"><article class="card contact-card"><h2>Request Service</h2><p>This form preserves the original site's service-inquiry purpose and sends requests through Dixon Pool Service's existing contact system.</p><form class="inquiry-form" action="/api/request-service" method="post"><div class="honeypot" aria-hidden="true"><label for="company-website">Company website</label><input id="company-website" name="company_website" type="text" tabindex="-1" autocomplete="off"></div><div class="form-field"><label for="request-name">Name</label><input id="request-name" name="name" type="text" autocomplete="name" required maxlength="120"></div><div class="form-field"><label for="request-phone">Phone Number</label><input id="request-phone" name="phone" type="tel" autocomplete="tel" required maxlength="40"></div><div class="form-field form-field-full"><label for="request-email">Email Address</label><input id="request-email" name="email" type="email" autocomplete="email" required maxlength="254"></div><div class="form-field form-field-full"><label for="request-service">Service(s) Needed</label><input id="request-service" name="service" type="text" autocomplete="off" maxlength="240"></div><div class="form-field form-field-full"><label for="request-message">Message</label><textarea id="request-message" name="message" required maxlength="4000"></textarea></div><div class="form-field form-field-full" data-upstream-challenge><input name="upstream_challenge_token" type="hidden"><label for="upstream-captcha-answer" data-challenge-prompt aria-live="polite">Loading the service form verification question…</label><input id="upstream-captcha-answer" name="upstream_captcha_answer" type="text" inputmode="numeric" pattern="[0-9]+" autocomplete="off" required maxlength="12" disabled><noscript>Please call Dixon Pool Service at (301) 607-1011 because the verification question requires JavaScript.</noscript></div><div class="form-field form-field-full"><div class="cf-turnstile" data-sitekey="{html.escape(TURNSTILE_SITEKEY, quote=True)}"></div></div><p class="form-note">Cloudflare verifies the anti-spam check. You must also answer Dixon Pool Service's own verification question; the demo never calculates that answer for you. The demo then forwards your request to Dixon Pool Service's original contact system and does not intentionally store inquiry details.</p><button class="btn btn-navy" type="submit" disabled>Send Service Request</button></form></article><article class="card contact-card"><h2>Contact details</h2><ul class="detail-list"><li><strong>Phone</strong><br><a href="tel:{PHONE_HREF}">{html.escape(PHONE)}</a></li><li><strong>Address</strong><br>{html.escape(ADDRESS)}<br><a href="{maps}">Open in Google Maps</a></li><li><strong>Hours</strong><br>Monday–Friday, 8 AM–4 PM</li></ul><div class="socials"><a class="btn btn-navy" href="{FACEBOOK}">Facebook</a><a class="btn btn-primary" href="{TIKTOK}">TikTok</a></div></article></div></section><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script></main>'''
     return shell('contact.html',body)
 
 

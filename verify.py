@@ -204,13 +204,24 @@ for field,label in [('name','Name'),('phone','Phone Number'),('email','Email Add
     assert label in form_html,(field,'missing label')
 for required in ('name','phone','email','message'):
     assert re.search(rf'name="{required}"[^>]*required',form_html),(required,'not required')
-assert 'name="company_website"' in form_html and 'type="submit">Send Service Request</button>' in form_html
+assert 'name="company_website"' in form_html and 'type="submit" disabled>Send Service Request</button>' in form_html
+assert 'data-upstream-challenge' in form_html
+assert 'name="upstream_challenge_token" type="hidden"' in form_html
+assert re.search(r'name="upstream_captcha_answer"[^>]*required[^>]*disabled',form_html)
+assert 'the demo never calculates that answer for you' in form_html
 assert 'class="cf-turnstile"' in form_html and 'data-sitekey=' in form_html
 assert 'https://challenges.cloudflare.com/turnstile/v0/api.js' in contact
 worker=(PUBLIC/'_worker.js').read_text()
-for marker in ('url.pathname === "/api/request-service"','request.method !== "POST"','status:405','responsePage(422','ORIGINAL_CONTACT','et_pb_contact_name_0','_wpnonce-et-pb-contact-form-submitted-0','et_pb_contact_captcha_0','TURNSTILE_SECRET','turnstile/v0/siteverify','request.body.getReader()','total > maxBytes','origin !== new URL(request.url).origin','plain === "Thanks for contacting us"','formStillPresent','env.ASSETS.fetch(request)'):
+for marker in ('url.pathname === "/api/request-service-challenge"','issueChallenge(env)','encryptChallenge','decryptChallenge','url.pathname === "/api/request-service"','request.method !== "POST"','status:405','responsePage(422','ORIGINAL_CONTACT','et_pb_contact_name_0','_wpnonce-et-pb-contact-form-submitted-0','et_pb_contact_captcha_0: userCaptchaAnswer','TURNSTILE_SECRET','turnstile/v0/siteverify','request.body.getReader()','total > maxBytes','origin !== new URL(request.url).origin','plain === "Thanks for contacting us"','formStillPresent','env.ASSETS.fetch(request)'):
     assert marker in worker,marker
 assert 'chris@leadfilament.com' not in worker and 'preventDefault' not in contact
+for forbidden in ('String(first + second)','Number(extract(captchaTag','et_pb_contact_captcha_0: String(','captchaAnswer = String(','encryptChallenge({nonce, first, second'):
+    assert forbidden not in worker,forbidden
+assert 'const userCaptchaAnswer = field(form, "upstream_captcha_answer", 12);' in worker
+assert 'et_pb_contact_captcha_0: userCaptchaAnswer' in worker
+assert 'prompt:`What is ${first} + ${second}?`' in worker
+for marker in ("fetch('/api/request-service-challenge'",'data.prompt','data.token','answer.disabled = false','submit.disabled = false'):
+    assert marker in js,marker
 assert evidence_hash in worker
 assert 'x-handler-evidence-sha256' in worker
 for control in ('request.body.getReader()','const ORIGINAL_CONTACT = "https://dixonpoolsmd.com/contact/"','catch (error)','plain === "Thanks for contacting us"','formStillPresent'):

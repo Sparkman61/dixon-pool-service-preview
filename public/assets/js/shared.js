@@ -18,6 +18,29 @@
   sync();
 });
 
+  const challenge = document.querySelector('[data-upstream-challenge]');
+  if (challenge) {
+    const prompt = challenge.querySelector('[data-challenge-prompt]');
+    const token = challenge.querySelector('input[name="upstream_challenge_token"]');
+    const answer = challenge.querySelector('input[name="upstream_captcha_answer"]');
+    const submit = challenge.closest('form').querySelector('button[type="submit"]');
+    fetch('/api/request-service-challenge', { headers: { accept: 'application/json' } })
+      .then((response) => {
+        if (!response.ok) throw new Error('challenge unavailable');
+        return response.json();
+      })
+      .then((data) => {
+        if (!data.prompt || !data.token) throw new Error('invalid challenge');
+        prompt.textContent = data.prompt;
+        token.value = data.token;
+        answer.disabled = false;
+        submit.disabled = false;
+      })
+      .catch(() => {
+        prompt.textContent = 'The verification question is temporarily unavailable. Please call (301) 607-1011.';
+      });
+  }
+
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reducedMotion || !('IntersectionObserver' in window)) return;
 
